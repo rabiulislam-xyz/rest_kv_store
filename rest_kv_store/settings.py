@@ -25,7 +25,7 @@ SECRET_KEY = '*=i(56(l9-2%@i5ik$jn7@up^d(+b=az#@qecwxz)!1y3c9o(s'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -125,3 +125,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+GETTER_METHODS = ["GET"]
+SETTER_METHODS = ["POST", "PATCH"]
+ACCEPTABLE_REQUEST_METHODS = GETTER_METHODS + SETTER_METHODS
+DEFAULT_TTL = 60 * 5  # in seconds

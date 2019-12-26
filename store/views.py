@@ -1,47 +1,53 @@
-from django.http import Http404
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
+import json
+from json import JSONDecodeError
+
+from django.conf import settings
+from django.http import JsonResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 from store.models import KeyVal
-from store.serializers import KeyValSerializer
+from store.utils import reset_ttl, format_pair, update_values
 
 
-class KeyValList(APIView):
-    def get(self, request, format=None):
-        snippets = KeyVal.objects.all()
-        serializer = KeyValSerializer(snippets, many=True)
-        return Response(serializer.data)
+class KeyValView(View):
+    @csrf_exempt
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in settings.ACCEPTABLE_REQUEST_METHODS:
 
-    def post(self, request, format=None):
-        serializer = KeyValSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if request.method in settings.SETTER_METHODS:
+                # validate data
+                try:
+                    self.params_dict = json.loads(request.body)
+                except JSONDecodeError:
+                    return JsonResponse({"message": "Invalid data format, only Json object is allowed"}, status=400)
 
+                if not self.params_dict:
+                    return JsonResponse({"message": "Data not provided"}, status=400)
 
-class KeyValDetail(APIView):
-    def get_object(self, pk):
-        try:
-            return KeyVal.objects.get(pk=pk)
-        except KeyVal.DoesNotExist:
-            raise Http404
+            return super().dispatch(request, *args, **kwargs)
 
-    def get(self, request, pk, format=None):
-        snippet = self.get_object(pk)
-        serializer = KeyValSerializer(snippet)
-        return Response(serializer.data)
+        else:
+            return JsonResponse({"message": f'Method Not Allowed ({request.method})'}, status=405)
 
-    def put(self, request, pk, format=None):
-        snippet = self.get_object(pk)
-        serializer = KeyValSerializer(snippet, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request):
+        kv_queryset = KeyVal.objects.all()
+        specified_keys = request.GET.get("keys")
+        specified_key_list = [key.strip() for key in specified_keys.split(",")] if specified_keys else []
 
-    def delete(self, request, pk, format=None):
-        snippet = self.get_object(pk)
-        snippet.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if specified_key_list:
+            kv_queryset = kv_queryset.filter(key__in=specified_key_list)
+            reset_ttl(kv_queryset)
+
+        data = format_pair(kv_queryset, specified_key_list)
+        return JsonResponse(data, status=200)
+
+    def post(self, request):
+        created_queryset = update_values(self.params_dict, create_if_not_exists=True)
+        reset_ttl(created_queryset)
+        return JsonResponse({"message": "Values stored successfully"}, status=201)
+
+    def patch(self, request):
+        created_queryset = update_values(self.params_dict)
+        reset_ttl(created_queryset)
+        return JsonResponse({"message": "Values updated successfully"}, status=200)

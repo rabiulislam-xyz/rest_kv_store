@@ -1,6 +1,8 @@
-from django.db.models import QuerySet
+import datetime
 
-from store.models import KeyVal
+from django.conf import settings
+from django.db.models import QuerySet
+from django.utils import timezone
 
 
 def format_pair(queryset: QuerySet, specified_keys: list = None) -> dict:
@@ -16,21 +18,6 @@ def format_pair(queryset: QuerySet, specified_keys: list = None) -> dict:
     return result
 
 
-def update_values(kv_pair_dict: dict, create_if_not_exists: bool = False) -> QuerySet:
-
-    for key, value in kv_pair_dict.items():
-        try:
-            kv_obj = KeyVal.objects.get(key=key)
-            kv_obj.value = value
-            kv_obj.save()
-        except KeyVal.DoesNotExist:
-            if create_if_not_exists:
-                KeyVal.objects.create(key=key, value=value)
-
-    return KeyVal.objects.filter(key__in=kv_pair_dict.keys())
-
-
 def reset_ttl(queryset: QuerySet) -> None:
-    print("resetting ttl for : ")
-    print(queryset)
+    queryset.update(ttl=timezone.localtime() + datetime.timedelta(seconds=settings.DEFAULT_TTL))
 

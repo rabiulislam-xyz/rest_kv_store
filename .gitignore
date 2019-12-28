@@ -120,3 +120,5 @@ Pipfile.lock
 
 # staticfiles from collectstatic
 staticfiles/
+
+celerybeat.pid

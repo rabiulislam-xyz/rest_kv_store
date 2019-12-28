@@ -7,16 +7,16 @@ from django.utils import timezone
 
 class KeyValManager(models.Manager):
     def non_expired(self):
-        return self.filter(ttl__gte=timezone.localtime())
+        return self.filter(ttl__gte=timezone.now())
 
     def expired(self):
-        return self.filter(ttl__lt=timezone.localtime())
+        return self.filter(ttl__lt=timezone.now())
 
 
 class KeyVal(models.Model):
     key = models.TextField(unique=True, db_index=True)
     value = models.TextField()
-    ttl = models.DateTimeField(default=timezone.localtime() + datetime.timedelta(seconds=settings.DEFAULT_TTL))
+    ttl = models.DateTimeField(default=timezone.now() + datetime.timedelta(seconds=settings.DEFAULT_TTL))
 
     objects = KeyValManager()
 

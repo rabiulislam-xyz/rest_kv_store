@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from celery.schedules import crontab
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -130,3 +132,19 @@ GETTER_METHODS = ["GET"]
 SETTER_METHODS = ["POST", "PATCH"]
 ACCEPTABLE_REQUEST_METHODS = GETTER_METHODS + SETTER_METHODS
 DEFAULT_TTL = 60 * 5  # in seconds
+
+
+# Celery application definition
+# http://docs.celeryproject.org/en/v4.0.2/userguide/configuration.html
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Dhaka'
+CELERY_BEAT_SCHEDULE = {
+    'remove_expired_keys': {
+        'task': 'store.tasks.remove_expired_keys',
+        'schedule': crontab()  # per minutes
+    }
+}

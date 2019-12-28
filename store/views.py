@@ -20,10 +20,10 @@ class KeyValView(View):
                 try:
                     self.params_dict = json.loads(request.body)
                 except JSONDecodeError:
-                    return JsonResponse({"message": "Invalid data format, only Json object is allowed"}, status=400)
+                    return JsonResponse({"message": "Data missing or invalid format (only Json format is allowed)"}, status=400)
 
                 if not self.params_dict:
-                    return JsonResponse({"message": "Data not provided"}, status=400)
+                    return JsonResponse({"message": "Data missing"}, status=400)
 
             return super().dispatch(request, *args, **kwargs)
 

@@ -19,7 +19,7 @@ services:
       - redis
   celery:
     build: .
-    command: celery -A proj worker -l info
+    command: celery -A rest_kv_store worker -l info
     volumes:
       - .:/code
     depends_on:
@@ -27,7 +27,7 @@ services:
       - redis
   celery-beat:
     build: .
-    command: celery -A proj beat -l info
+    command: celery -A rest_kv_store beat -l info
     volumes:
       - .:/code
     depends_on:

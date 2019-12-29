@@ -1,4 +1,5 @@
 import json
+import logging
 from json import JSONDecodeError
 
 from django.conf import settings
@@ -8,6 +9,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 from store.models import KeyVal
 from store.utils import reset_ttl, format_pair
+
+
+logger = logging.getLogger("all")
 
 
 class KeyValView(View):
@@ -25,46 +29,47 @@ class KeyValView(View):
                 if not self.params_dict:
                     return JsonResponse({"message": "Data missing"}, status=400)
 
+            self.non_expired_kv_queryset = KeyVal.objects.non_expired()
             return super().dispatch(request, *args, **kwargs)
 
         else:
             return JsonResponse({"message": f'Method Not Allowed ({request.method})'}, status=405)
 
     def get(self, request):
-        # kv_queryset = KeyVal.objects.all()
-        kv_queryset = KeyVal.objects.non_expired()
         specified_keys = request.GET.get("keys")
         specified_key_list = [key.strip() for key in specified_keys.split(",")] if specified_keys else []
 
         if specified_key_list:
-            kv_queryset = kv_queryset.filter(key__in=specified_key_list)
-            reset_ttl(kv_queryset)
+            reset_ttl(specified_key_list)
 
-        data = format_pair(kv_queryset, specified_key_list)
+        data = format_pair(self.non_expired_kv_queryset, specified_key_list)
         return JsonResponse(data, status=200)
 
     def post(self, request):
-        kv_queryset = KeyVal.objects.all()
+        # return if any submitted key already exists
+        if self.non_expired_kv_queryset.filter(key__in=self.params_dict.keys()).exists():
+            existing_keys = list(self.non_expired_kv_queryset.filter(key__in=self.params_dict.keys()).values_list("key", flat=True))
+            logger.info(f"duplicate key request for {existing_keys}")
+            return JsonResponse({"message": f"Some keys are already exists.", "existing_keys": existing_keys}, status=409)
+
         for key, value in self.params_dict.items():
             try:
-                kv_obj = kv_queryset.get(key=key)
-                kv_obj.value = value
-                kv_obj.save()
-            except KeyVal.DoesNotExist:
                 KeyVal.objects.create(key=key, value=value)
+            except Exception as e:
+                logger.critical(f"key: {key}, value: {value} not created")
+                logger.critical(str(e))
 
-        reset_ttl(kv_queryset.filter(key__in= self.params_dict.keys()))
+        reset_ttl(self.params_dict.keys())
         return JsonResponse({"message": "Values stored successfully"}, status=201)
 
     def patch(self, request):
-        non_expired_kv_queryset = KeyVal.objects.non_expired()
         for key, value in self.params_dict.items():
             try:
-                kv_obj = non_expired_kv_queryset.get(key=key)
+                kv_obj = self.non_expired_kv_queryset.get(key=key)
                 kv_obj.value = value
                 kv_obj.save()
             except KeyVal.DoesNotExist:
                 pass
 
-        reset_ttl(non_expired_kv_queryset.filter(key__in= self.params_dict.keys()))
+        reset_ttl(self.params_dict.keys())
         return JsonResponse({"message": "Values updated successfully"}, status=200)

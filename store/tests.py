@@ -46,13 +46,13 @@ class TestKeyValue(TestCase):
 
     def test_create_existing_single_key_value(self):
         response = self.client.post("/values", content_type='application/json', data={"key1": "value1"})
-        self.assertEqual(response.json(), {'message': 'Values stored successfully'})
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message':  "Some keys are already exists.", "existing_keys": ["key1"]})
+        self.assertEqual(response.status_code, 409)
 
     def test_create_existing_multiple_key_values(self):
         response = self.client.post("/values", content_type='application/json', data={"key1": "value1", "key2": "value2"})
-        self.assertEqual(response.json(), {'message': 'Values stored successfully'})
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message':  "Some keys are already exists.", "existing_keys": ["key1", "key2"]})
+        self.assertEqual(response.status_code, 409)
 
     def test_update_single_key_value(self):
         response = self.client.get("/values?keys=key1", content_type='application/json')

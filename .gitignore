@@ -122,3 +122,5 @@ Pipfile.lock
 staticfiles/
 
 celerybeat.pid
+
+.vscode/

@@ -5,6 +5,10 @@ from django.db import models
 from django.utils import timezone
 
 
+def get_ttl_for_new_object():
+    return timezone.now() + datetime.timedelta(seconds=settings.DEFAULT_TTL)
+
+
 class KeyValManager(models.Manager):
     def non_expired(self):
         return self.filter(ttl__gte=timezone.now())
@@ -16,7 +20,7 @@ class KeyValManager(models.Manager):
 class KeyVal(models.Model):
     key = models.TextField(unique=True, db_index=True)
     value = models.TextField()
-    ttl = models.DateTimeField(default=timezone.now() + datetime.timedelta(seconds=settings.DEFAULT_TTL))
+    ttl = models.DateTimeField(default=get_ttl_for_new_object)
 
     objects = KeyValManager()
 
